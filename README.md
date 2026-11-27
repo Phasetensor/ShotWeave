@@ -135,3 +135,22 @@ wall time including queueing. Keep the report when diagnosing a failed run.
 ## Research methods and development history
 
 [Scientific methods](docs/methods.md) · [Changes since 0.1.0](CHANGELOG.md) · [Software citation](CITATION.cff)
+
+## Advanced measurement design
+
+Import strategies from the public package. A fixed-budget run supports uniform, weighted, optimal, adaptive, adaptive-optimal, Bayesian, robust and noise-aware designs. The strategy strings use lowercase. Use the sequential entry point when each batch can determine whether sampling stops.
+
+```python
+from shotweave import Readout, run_experiment
+
+def measure(shots):
+    # Deterministic example callback returning one count per circuit.
+    return [n // 2 for n in shots]
+
+result = run_experiment(10_000, [1, -2], measure, "noise-aware", "auto",
+                        readout=[Readout(.02, .03), Readout(.12, .07)])
+```
+
+A circuit with readout slope s amplifies variance by 1/s² after correction. The noise-aware strategy allocates the fresh measurement batch using pilot estimates of the observed variances and these per-circuit amplification factors. Calibration rates are treated as known and stationary. Supply identical calibrations to the other strategies to compare allocations for the same corrected estimator.
+
+The advanced benchmark compares eight strategies at 10,000 shots per trial, including pilot shots. Each of two scenarios uses 150 matched blocks. The sequential benchmark checks every inspected interval along 500 adaptive paths per scenario, including the stopping look. See the [benchmark results](benchmark_advanced.csv), [sequential coverage](benchmark_sequential.csv), [mathematical assumptions](docs/advanced.md) and [15-module traceability matrix](docs/traceability.md).

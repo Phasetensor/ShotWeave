@@ -15,8 +15,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install build twine '.[qiskit]'
-      - run: python -m unittest -v
+      - run: python -m pip install build twine ruff coverage mypy '.[qiskit]'
+      - run: ruff check shotweave && ruff format --check shotweave
+      - run: mypy --follow-imports=silent --disallow-untyped-defs shotweave
+      - run: coverage run --branch --source=shotweave -m unittest discover && coverage json && python scripts/coverage_gate.py
       - run: python qiskit_example.py
       - run: python -m build && python -m twine check --strict dist/*
       - uses: actions/upload-artifact@v4
@@ -37,6 +39,8 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
   verify:
     needs: publish
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,3 +54,11 @@ jobs:
           done
           cd /tmp
           shotweave --help
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - run: python scripts/verify_distribution.py
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v$(cat VERSION)" dist/* --target "$GITHUB_SHA" --title "ShotWeave $(cat VERSION)" --notes-file CHANGELOG.md

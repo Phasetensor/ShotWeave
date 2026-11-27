@@ -3,7 +3,9 @@ from dataclasses import dataclass
 from math import fsum, isfinite, isqrt, log, sqrt
 from typing import Callable, Iterable, Literal, Optional, Sequence, Tuple, Union
 
-from . import adaptive_allocation, allocate
+from . import adaptive_allocation, allocate, optimal_allocation
+from .design import Posterior, bayesian_allocation, robust_allocation
+from .measurements import Readout
 
 
 @dataclass(frozen=True)
@@ -14,6 +16,8 @@ class Estimate:
     successes: Tuple[int, ...]
     pilot_shots: Tuple[int, ...] = ()
     pilot_successes: Tuple[int, ...] = ()
+
+    readout: Tuple[Readout, ...] = ()
 
     @property
     def total_shots(self) -> int:
@@ -57,11 +61,13 @@ def confidence_interval(result: Estimate, coefficients: Iterable[float], level: 
     coefficients = tuple(coefficients)
     if not 0 < level < 1 or len(coefficients) != len(result.final_shots):
         raise ValueError("Invalid confidence level or coefficient count")
-    estimate = summarize(coefficients, result.final_shots, result.successes)
-    scale = fsum(c*c/n for c, n in zip(coefficients, result.final_shots))
+    effective = _effective(coefficients, result.readout)
+    estimate = summarize(effective, result.final_shots, result.successes)
+    value = estimate.value - fsum(c*m.false_one for c,m in zip(effective,result.readout))
+    scale = fsum(c*c/n for c, n in zip(effective, result.final_shots))
     radius = sqrt(0.5 * log(2 / (1 - level)) * scale)
-    return (max(fsum(min(0, c) for c in coefficients), estimate.value - radius),
-            min(fsum(max(0, c) for c in coefficients), estimate.value + radius))
+    return (max(fsum(min(0, c) for c in coefficients), value - radius),
+            min(fsum(max(0, c) for c in coefficients), value + radius))
 
 
 def automatic_pilot(budget: int, circuits: int) -> int:
@@ -72,20 +78,34 @@ def automatic_pilot(budget: int, circuits: int) -> int:
     return max(1, min(isqrt(per_circuit), per_circuit // 10))
 
 
+def _effective(coefficients: tuple[float,...], models: tuple[Readout,...]) -> tuple[float,...]:
+    if models and len(models)!=len(coefficients):
+        raise ValueError("Provide one readout model per circuit")
+    return tuple(c/(1-m.false_one-m.false_zero) for c,m in zip(coefficients,models)) if models else coefficients
+
+
 def run_experiment(budget: int, coefficients: Iterable[float],
                    submit: Callable[[tuple[int, ...]], Iterable[int]], strategy: str = "adaptive",
-                   pilot_size: Union[int, Literal["auto"]] = 64) -> Estimate:
+                   pilot_size: Union[int, Literal["auto"]] = 64, *,
+                   readout: Sequence[Readout] = (),
+                   variance_bounds: Optional[Sequence[tuple[float,float]]] = None) -> Estimate:
     """Call submit(shots) in circuit order and return the estimate and both batches."""
     coefficients = tuple(coefficients)
-    if strategy not in ("uniform", "weighted", "adaptive", "adaptive-optimal"):
+    if strategy not in ("uniform", "weighted", "adaptive", "adaptive-optimal","optimal","robust","bayesian","noise-aware"):
         raise ValueError("Unknown allocation strategy")
     if not coefficients or not all(map(isfinite, coefficients)) or not any(coefficients):
         raise ValueError("Provide finite coefficients with a nonzero term")
     if type(budget) is not int or budget < len(coefficients):
         raise ValueError("Budget must cover every circuit")
+    models = tuple(readout)
+    if strategy=="noise-aware" and not models:
+        raise ValueError("Noise-aware allocation requires one calibration per circuit")
+    if variance_bounds is not None and strategy!="robust":
+        raise ValueError("Variance bounds apply to robust allocation")
+    effective = _effective(coefficients,models)
     pilot: tuple[int, ...] = ()
     pilot_counts: tuple[int, ...] = ()
-    if strategy in ("adaptive", "adaptive-optimal"):
+    if strategy in ("adaptive", "adaptive-optimal","bayesian","noise-aware"):
         if pilot_size == "auto":
             pilot_size = automatic_pilot(budget, len(coefficients))
         if type(pilot_size) is not int or not 1 <= pilot_size <= budget // len(coefficients) - 1:
@@ -93,10 +113,18 @@ def run_experiment(budget: int, coefficients: Iterable[float],
         pilot = (pilot_size,) * len(coefficients)
         pilot_counts = tuple(submit(pilot))
         _check_counts(pilot, pilot_counts)
-        final = adaptive_allocation(budget, coefficients, pilot_counts, pilot_size, optimal=strategy == "adaptive-optimal")
+        if strategy in ("bayesian","noise-aware"):
+            posterior = [Posterior(.5,.5).update(k,pilot_size) for k in pilot_counts]
+            final = bayesian_allocation(budget-sum(pilot),effective if strategy=="noise-aware" else coefficients,posterior)
+        else:
+            final = adaptive_allocation(budget, coefficients, pilot_counts, pilot_size, optimal=strategy == "adaptive-optimal")
+    elif strategy=="robust":
+        final = robust_allocation(budget,coefficients,variance_bounds if variance_bounds is not None else [(0.,.25)]*len(coefficients))
+    elif strategy=="optimal":
+        final = optimal_allocation(budget,map(abs,coefficients))
     else:
         weights = [1] * len(coefficients) if strategy == "uniform" else map(abs, coefficients)
         final = allocate(budget, weights)
-    result = summarize(coefficients, final, submit(tuple(final)))
-    return Estimate(result.value, result.standard_error, result.final_shots,
-                    result.successes, pilot, pilot_counts)
+    result = summarize(effective, final, submit(tuple(final)))
+    return Estimate(result.value-fsum(c*m.false_one for c,m in zip(effective,models)), result.standard_error, result.final_shots,
+                    result.successes, pilot, pilot_counts,models)

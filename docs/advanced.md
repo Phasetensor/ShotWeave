@@ -10,7 +10,7 @@ sequential chooses each batch using only previous observations. confidence_seque
 
 Readout.correct propagates sampling variance through a linear inverse conditional on known calibration rates. extrapolate propagates independent variances through polynomial zero-noise extrapolation. Both methods can amplify variance. aggregate enforces matching backend, observable and calibration identifiers. Caller identifiers must encode circuit and measurement semantics.
 
-Run python benchmark_advanced.py to regenerate the matched-block CSV. Every method gets 320 shots per block including the pilot. A block reuses random streams within a stage across strategies. Pilot and final streams are independent. RMSE standard errors use the delta method. Equal pilot sizes and a common symmetric Beta prior can make Bayesian and adaptive-optimal allocations coincide. Simulation coverage records empirical inclusion of the known value.
+Run python benchmark_advanced.py to regenerate the matched-block CSV. Every method gets 10,000 shots per block including the pilot. A block reuses random streams within a stage across strategies. Pilot and final streams are independent. RMSE standard errors use the delta method. Equal pilot sizes and a common symmetric Beta prior can make Bayesian and adaptive-optimal allocations coincide. Simulation coverage records empirical inclusion of the known value.
 
 Run python h2_example.py for a two-qubit H2 variational-state measurement simulation. The exact reference diagonalizes both parity sectors of the rounded Hamiltonian. The reported variance includes within-Z-group covariance. The simulation uses exact-state weights as an oracle for measurement design.
 
