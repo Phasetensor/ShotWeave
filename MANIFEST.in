@@ -3,3 +3,5 @@ include benchmark_grid.py benchmark_grid.csv qiskit_example.py test_research.py
 include test_qiskit_adapter.py
 include hardware_example.py
 include VERSION
+include CHANGELOG.md CITATION.cff docs/methods.md test_integer_optimum.py
+include hardware_comparison.py

@@ -7,7 +7,7 @@ from dataclasses import asdict
 from .experiment import summarize
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("file", nargs="?", type=argparse.FileType("r"), default=sys.stdin,
                         help="JSON file with coefficients, shots and successes (default: stdin)")

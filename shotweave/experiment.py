@@ -1,7 +1,7 @@
 """Execution of independent binary measurement batches."""
 from dataclasses import dataclass
 from math import fsum, isfinite, isqrt, log, sqrt
-from typing import Optional, Tuple
+from typing import Callable, Iterable, Literal, Optional, Sequence, Tuple, Union
 
 from . import adaptive_allocation, allocate
 
@@ -16,24 +16,24 @@ class Estimate:
     pilot_successes: Tuple[int, ...] = ()
 
     @property
-    def total_shots(self):
+    def total_shots(self) -> int:
         return sum(self.final_shots) + sum(self.pilot_shots)
 
     @property
-    def batches(self):
+    def batches(self) -> int:
         return 2 if self.pilot_shots else 1
 
 
-def _check_counts(shots, successes):
+def _check_counts(shots: Sequence[int], successes: Sequence[int]) -> None:
     if len(shots) != len(successes) or any(
         type(k) is not int or not 0 <= k <= n for n, k in zip(shots, successes)
     ):
         raise ValueError("Expected one integer success count in [0, shots] per circuit")
 
 
-def summarize(coefficients, shots, successes):
+def summarize(coefficients: Iterable[float], shots: Iterable[int], successes: Iterable[int]) -> Estimate:
     """Estimate a weighted sum of probabilities from independent final counts."""
-    coefficients, shots, successes = map(tuple, (coefficients, shots, successes))
+    coefficients, shots, successes = tuple(coefficients), tuple(shots), tuple(successes)
     if not shots or len(coefficients) != len(shots) or any(
         type(n) is not int or n < 1 for n in shots
     ):
@@ -52,7 +52,7 @@ def summarize(coefficients, shots, successes):
     return Estimate(value, standard_error, shots, successes)
 
 
-def confidence_interval(result, coefficients, level=0.95):
+def confidence_interval(result: Estimate, coefficients: Iterable[float], level: float = 0.95) -> tuple[float, float]:
     """Two-sided Hoeffding interval conditional on the independent final allocation."""
     coefficients = tuple(coefficients)
     if not 0 < level < 1 or len(coefficients) != len(result.final_shots):
@@ -64,7 +64,7 @@ def confidence_interval(result, coefficients, level=0.95):
             min(fsum(max(0, c) for c in coefficients), estimate.value + radius))
 
 
-def automatic_pilot(budget, circuits):
+def automatic_pilot(budget: int, circuits: int) -> int:
     """Square-root pilot per circuit, capped at 10% except for the one-shot floor."""
     if type(circuits) is not int or circuits < 1 or type(budget) is not int or budget < 2 * circuits:
         raise ValueError("Adaptive sampling needs two shots per circuit")
@@ -72,7 +72,9 @@ def automatic_pilot(budget, circuits):
     return max(1, min(isqrt(per_circuit), per_circuit // 10))
 
 
-def run_experiment(budget, coefficients, submit, strategy="adaptive", pilot_size=64):
+def run_experiment(budget: int, coefficients: Iterable[float],
+                   submit: Callable[[tuple[int, ...]], Iterable[int]], strategy: str = "adaptive",
+                   pilot_size: Union[int, Literal["auto"]] = 64) -> Estimate:
     """Call submit(shots) in circuit order and return the estimate and both batches."""
     coefficients = tuple(coefficients)
     if strategy not in ("uniform", "weighted", "adaptive"):
@@ -81,7 +83,8 @@ def run_experiment(budget, coefficients, submit, strategy="adaptive", pilot_size
         raise ValueError("Provide finite coefficients with a nonzero term")
     if type(budget) is not int or budget < len(coefficients):
         raise ValueError("Budget must cover every circuit")
-    pilot = pilot_counts = ()
+    pilot: tuple[int, ...] = ()
+    pilot_counts: tuple[int, ...] = ()
     if strategy == "adaptive":
         if pilot_size == "auto":
             pilot_size = automatic_pilot(budget, len(coefficients))

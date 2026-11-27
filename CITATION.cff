@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "Please cite ShotWeave when using it in research."
+title: "ShotWeave"
+type: software
+authors:
+  - name: PhaseTensor
+version: 0.1.0
+date-released: 2026-11-27
+repository-code: "https://github.com/Phasetensor/ShotWeave"
+url: "https://pypi.org/project/shotweave/0.1.0/"
+license: Apache-2.0

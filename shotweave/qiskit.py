@@ -1,16 +1,24 @@
 """Adapter for unparameterized circuits and Qiskit V2 samplers."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Iterable
 from dataclasses import dataclass
+
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
+    from qiskit.primitives import BaseSamplerV2
 
 
 @dataclass(frozen=True)
 class Submission:
     job_id: str
-    shots: tuple
+    shots: tuple[int, ...]
 
 
 class SamplerAdapter:
     """Read a single named one-bit classical register per circuit."""
-    def __init__(self, sampler, circuits, register="meas"):
+    def __init__(self, sampler: BaseSamplerV2, circuits: Iterable[QuantumCircuit], register: str = "meas") -> None:
         self.sampler = sampler
         self.circuits = tuple(circuits)
         self.register = register
@@ -23,7 +31,7 @@ class SamplerAdapter:
             ):
                 raise ValueError("Bind parameters and provide a one-bit output register")
 
-    def __call__(self, shots):
+    def __call__(self, shots: Iterable[int]) -> list[int]:
         shots = tuple(shots)
         if len(shots) != len(self.circuits) or any(type(n) is not int or n < 1 for n in shots):
             raise ValueError("Expected one positive shot count per circuit")

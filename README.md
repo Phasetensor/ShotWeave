@@ -131,3 +131,7 @@ authenticated IBM Quantum account run
 This submits jobs on the selected instance. Reuse the same output path to resume a recorded job. The hardware example uses repeated RY angle bindings with a common shot count per binding to realize unequal circuit allocations in one final IBM job. A submission without a recorded job ID requires checking IBM workloads before retrying. The new JSON Lines file records
 backend, UTC start, job IDs, per-circuit shot counts, observed successes and
 wall time including queueing. Keep the report when diagnosing a failed run.
+
+## Research methods and development history
+
+[Scientific methods](docs/methods.md) · [Changes since 0.1.0](CHANGELOG.md) · [Software citation](CITATION.cff)

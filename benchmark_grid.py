@@ -2,6 +2,7 @@
 import csv
 from math import fsum, sqrt
 from random import Random
+from statistics import stdev
 import sys
 
 from shotweave.experiment import confidence_interval, run_experiment
@@ -19,8 +20,8 @@ def simulate(budget, size, regime, method):
     strategy = "adaptive" if method in ("auto", "fixed64") else method
     feasible = not fixed or budget >= 65 * size
     if not feasible:
-        return ["infeasible"] + [""] * 8
-    variances, errors = [], []
+        return ["infeasible"] + [""] * 11
+    variances, errors, signed = [], [], []
     covered = 0
     for seed in range(TRIALS):
         rng = Random(seed)
@@ -32,19 +33,23 @@ def simulate(budget, size, regime, method):
         assert result.total_shots == budget
         lo, hi = confidence_interval(result, c)
         covered += lo <= truth <= hi
+        signed.append(result.value - truth)
         errors.append((result.value - truth)**2)
         variances.append(fsum(w*w*q*(1-q)/n for w, q, n in zip(c, p, result.final_shots)))
     jobs = result.batches
     # Cost model in seconds: 10 microseconds per shot, plus latency per job.
     shot_time = budget * 1e-5
+    rmse = sqrt(fsum(errors)/TRIALS)
     return ["ok", sum(result.pilot_shots), sum(result.final_shots), jobs,
             round(sqrt(fsum(errors)/TRIALS), 7), round(sqrt(fsum(variances)/TRIALS), 7),
-            round(covered/TRIALS, 4), round(shot_time, 5), round(shot_time + jobs, 5)]
+            round(covered/TRIALS, 4), round(shot_time, 5), round(shot_time + jobs, 5),
+            round(fsum(signed)/TRIALS, 7), round(stdev(signed)/sqrt(TRIALS), 7),
+            round(stdev(errors)/(2*rmse*sqrt(TRIALS)), 7) if rmse else ""]
 
 
 if __name__ == "__main__":
     writer = csv.writer(sys.stdout, lineterminator="\n")
-    writer.writerow("budget circuits regime method status pilot final jobs rmse reference coverage95 modeled_s_latency0 modeled_s_latency1".split())
+    writer.writerow("budget circuits regime method status pilot final jobs rmse reference coverage95 modeled_s_latency0 modeled_s_latency1 bias bias_mcse rmse_mcse".split())
     for budget in (1000, 10000):
         for size in (4, 16, 100):
             for regime in ("equal", "rare"):
