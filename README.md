@@ -116,7 +116,7 @@ coefficient weighting gives 0.0100003 with one job, versus 0.0105714 for auto.
 Install the Qiskit extra and qiskit-ibm-runtime in Python 3.12. With an
 authenticated IBM Quantum account run
 `python hardware_example.py --instance YOUR_INSTANCE_CRN --output hardware-run.jsonl`.
-This submits jobs on the selected instance. The new JSON Lines file records
+This submits jobs on the selected instance. Reuse the same output path to resume a recorded job. The hardware example uses repeated RY angle bindings with a common shot count per binding to realize unequal circuit allocations in one final IBM job. A submission without a recorded job ID requires checking IBM workloads before retrying. The new JSON Lines file records
 backend, UTC start, job IDs, per-circuit shot counts, observed successes and
 wall time including queueing. Keep the report when diagnosing a failed run.
 
