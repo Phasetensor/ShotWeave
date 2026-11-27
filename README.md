@@ -110,3 +110,18 @@ allocation leaves 9,000 final shots and gives reference RMSE 0.0045562.
 A 64-shot pilot leaves 3,600 and gives 0.0063765. Uniform allocation gives
 0.0051802 with one job. For equal variances at the same budget and size,
 coefficient weighting gives 0.0100003 with one job, versus 0.0105714 for auto.
+
+## IBM Quantum hardware and public distribution
+
+Install the Qiskit extra and qiskit-ibm-runtime in Python 3.12. With an
+authenticated IBM Quantum account run
+`python hardware_example.py --instance YOUR_INSTANCE_CRN --output hardware-run.jsonl`.
+This submits jobs on the selected instance. The new JSON Lines file records
+backend, UTC start, job IDs, per-circuit shot counts, observed successes and
+wall time including queueing. Keep the report when diagnosing a failed run.
+
+For the first PyPI publication, configure a pending Trusted Publisher for
+project `shotweave`, owner `Phasetensor`, repository `ShotWeave`, workflow
+`publish.yml`, environment `pypi`. Dispatch the Publish ShotWeave to PyPI
+workflow from main. It builds and validates both distributions, uploads them
+using GitHub OIDC and checks installation from the public index.

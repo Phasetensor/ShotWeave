@@ -1,3 +1,4 @@
 include benchmark.py test_allocation.py test_experiment.py
 include benchmark_grid.py benchmark_grid.csv qiskit_example.py test_research.py
 include test_qiskit_adapter.py
+include hardware_example.py
