@@ -16,7 +16,7 @@ remaining = adaptive_allocation(10_000, [1, -2, 4, 1], [32, 16, 63, 45], 64)
 
 ## Installation and measurement data
 
-Install from the repository root with `python -m pip install .`. No runtime dependencies are required.
+Install from PyPI with `python -m pip install shotweave==0.1.0`, or from the repository root with `python -m pip install .`. No runtime dependencies are required.
 
 A backend receives a tuple of requested shot counts and returns one integer count of outcome 1 per circuit in the same order. This example uses a seeded local sampler. Replace the callback with your own batch submission function to use other measurement data.
 
@@ -52,7 +52,7 @@ python benchmark.py
 
 Each of 200 seeded trials spends 10,000 shots on four simulated Bernoulli circuits. Uniform allocation splits shots equally. Weighted allocation uses absolute observable coefficients. Adaptive allocation spends 256 shots in a pilot batch and allocates its second batch in proportion to each absolute coefficient times its estimated standard deviation. Half-count smoothing keeps the estimate positive at both boundaries. Only the independent second batch contributes to the adaptive point estimate.
 
-The script reports root mean squared error against the exact weighted sum, simulated batch calls per trial, and elapsed local time across all trials. A batch can contain different shot counts per circuit. Hardware support for this batching assumption and queue latency require separate evaluation.
+The script reports root mean squared error against the exact weighted sum, simulated batch calls per trial, and elapsed local time across all trials. A batch can contain different shot counts per circuit. See the IBM hardware run below for an implementation using a common shot count per parameter binding.
 
 ### Reference error by scenario
 
@@ -68,7 +68,7 @@ With equal circuit variances, coefficient weighting gives the lowest reference e
 
 ## Status
 
-Version 0.1.0, licensed under Apache 2.0. The benchmarks cover three synthetic scenarios. No hardware or PyPI release has been validated.
+Version 0.1.0, licensed under Apache 2.0. The benchmarks cover three synthetic scenarios. Version 0.1.0 is available on [PyPI](https://pypi.org/project/shotweave/0.1.0/).
 
 ## Qiskit V2 sampler
 
@@ -111,7 +111,19 @@ A 64-shot pilot leaves 3,600 and gives 0.0063765. Uniform allocation gives
 0.0051802 with one job. For equal variances at the same budget and size,
 coefficient weighting gives 0.0100003 with one job, versus 0.0105714 for auto.
 
-## IBM Quantum hardware and public distribution
+## IBM hardware result
+
+On 27 November 2026, the repository hardware example completed a three-angle RY experiment on `ibm_marrakesh` with **10,000 shots in two jobs**. The final allocation used the observed pilot counts.
+
+| RY angle (radians) | Coefficient | Pilot ones / shots | Final ones / shots |
+| ---: | ---: | ---: | ---: |
+| 0 | 1 | 0 / 57 | 2 / 359 |
+| 0.7 | −2 | 7 / 57 | 312 / 2,604 |
+| 2.3 | 4 | 42 / 57 | 5,721 / 6,866 |
+
+The weighted sum of final frequencies was **3.098885**, with estimated sampling standard error **0.022392**. This single run verifies execution and shot accounting. Comparing allocation accuracy on hardware requires repeated runs of the competing strategies.
+
+## Running the hardware example from the repository
 
 Install the Qiskit extra and qiskit-ibm-runtime in Python 3.12. With an
 authenticated IBM Quantum account run
@@ -119,9 +131,3 @@ authenticated IBM Quantum account run
 This submits jobs on the selected instance. Reuse the same output path to resume a recorded job. The hardware example uses repeated RY angle bindings with a common shot count per binding to realize unequal circuit allocations in one final IBM job. A submission without a recorded job ID requires checking IBM workloads before retrying. The new JSON Lines file records
 backend, UTC start, job IDs, per-circuit shot counts, observed successes and
 wall time including queueing. Keep the report when diagnosing a failed run.
-
-For the first PyPI publication, configure a pending Trusted Publisher for
-project `shotweave`, owner `Phasetensor`, repository `ShotWeave`, workflow
-`publish.yml`, environment `pypi`. Dispatch the Publish ShotWeave to PyPI
-workflow from main. It builds and validates both distributions, uploads them
-using GitHub OIDC and checks installation from the public index.
