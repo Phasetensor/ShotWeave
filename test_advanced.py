@@ -63,3 +63,22 @@ class AdvancedTests(unittest.TestCase):
                 self.assertGreaterEqual(look.interval[1],0)
         with self.assertRaises(ValueError):
             sequential([1],lambda n:[-1],20,2,1,0)
+
+class ApplicationTests(unittest.TestCase):
+    def test_energy_and_mitigation(self):
+        from shotweave.applications import grouped_energy, extrapolate
+        self.assertEqual(grouped_energy(-1, [[1,1]], [[[1,-1],[-1,1]]]),(-1,0))
+        self.assertEqual(extrapolate([1,2],[3,4],[.25,1]),(2,2))
+        with self.assertRaises(ValueError):
+            extrapolate([1,1],[3,4],[.25,1])
+        with self.assertRaises(ValueError):
+            grouped_energy(0,[[1]],[[[1],[2]]])
+
+    def test_backend_accounting(self):
+        from shotweave.applications import aggregate, BackendRecord
+        def row(name,job):
+            return BackendRecord(name,"cal1","Z",job,4,1,.5)
+        self.assertEqual(aggregate([row("a","1"),row("a","2")]),(2,8,1))
+        for pair in [[row("a","1"),row("b","2")],[row("a","1")]*2]:
+            with self.assertRaises(ValueError):
+                aggregate(pair)
