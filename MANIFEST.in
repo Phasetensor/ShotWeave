@@ -5,3 +5,6 @@ include hardware_example.py
 include VERSION
 include CHANGELOG.md CITATION.cff docs/methods.md test_integer_optimum.py
 include hardware_comparison.py
+
+include benchmark_advanced.py benchmark_advanced.csv benchmark_sequential.py benchmark_sequential.csv
+include h2_example.py docs/advanced.md docs/traceability.md test_advanced.py test_release.py
