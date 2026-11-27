@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 
 if TYPE_CHECKING:
-    from qiskit import QuantumCircuit
-    from qiskit.primitives import BaseSamplerV2
+    from qiskit import QuantumCircuit  # type: ignore[import-untyped]
+    from qiskit.primitives import BaseSamplerV2  # type: ignore[import-untyped]
 
 
 @dataclass(frozen=True)
@@ -22,7 +22,7 @@ class SamplerAdapter:
         self.sampler = sampler
         self.circuits = tuple(circuits)
         self.register = register
-        self.jobs = []
+        self.jobs: list[Submission] = []
         if not self.circuits:
             raise ValueError("Provide at least one circuit")
         for circuit in self.circuits:
