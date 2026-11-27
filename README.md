@@ -14,6 +14,35 @@ counts = allocate(10_000, [1, 2, 4, 1])
 remaining = adaptive_allocation(10_000, [1, -2, 4, 1], [32, 16, 63, 45], 64)
 ```
 
+## Installation and measurement data
+
+Install from the repository root with `python -m pip install .`. No runtime dependencies are required.
+
+A backend receives a tuple of requested shot counts and returns one integer count of outcome 1 per circuit in the same order. This example uses a seeded local sampler. Replace the callback with your own batch submission function to use other measurement data.
+
+```python
+from random import Random
+from shotweave.experiment import run_experiment
+
+rng = Random(42)
+probabilities = (0.3, 0.8)
+
+def submit(shots):
+    return [sum(rng.random() < p for _ in range(n))
+            for p, n in zip(probabilities, shots)]
+
+result = run_experiment(10_000, [1, -2], submit, strategy="adaptive")
+print(result.value, result.standard_error, result.total_shots)
+```
+
+For previously collected independent final counts, use the CLI:
+
+```sh
+echo '{"coefficients":[1,-2],"shots":[100,100],"successes":[30,80]}' | shotweave
+```
+
+The target is the weighted sum of probabilities of outcome 1. For a Pauli measurement with outcome 0 mapped to +1, the expectation is 1 − 2p. Each circuit must supply independent shots with a stable probability. The reported standard error uses sample variances, can be zero for boundary counts, and is unavailable when a nonzero term has only one final shot. It excludes systematic device error. A backend exception propagates to the caller without an automatic retry.
+
 ## Reproduce the benchmarks
 
 ```sh
@@ -39,4 +68,4 @@ With equal circuit variances, coefficient weighting gives the lowest reference e
 
 ## Status
 
-Development preview under Apache 2.0. The benchmarks cover three synthetic scenarios. No hardware or PyPI release has been validated.
+Version 0.1.0, licensed under Apache 2.0. The benchmarks cover three synthetic scenarios. No hardware or PyPI release has been validated.

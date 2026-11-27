@@ -1,5 +1,6 @@
 """Integer shot allocation for independent binary measurements."""
-from math import floor, fsum, isfinite, sqrt
+from fractions import Fraction
+from math import isfinite, sqrt
 
 
 def allocate(budget, weights):
@@ -9,10 +10,10 @@ def allocate(budget, weights):
         raise ValueError("Provide an integer budget covering every circuit")
     if any(not isfinite(w) or w < 0 for w in weights) or not max(weights):
         raise ValueError("Weights must be finite, nonnegative and include a positive value")
-    scaled = [w / max(weights) for w in weights]
-    total = fsum(scaled)
-    quotas = [(budget - len(weights)) * w / total for w in scaled]
-    counts = [1 + floor(q) for q in quotas]
+    exact = [Fraction(w) for w in weights]
+    total = sum(exact)
+    quotas = [(budget - len(weights)) * w / total for w in exact]
+    counts = [1 + int(q) for q in quotas]
     order = sorted(range(len(weights)), key=lambda i: quotas[i] % 1, reverse=True)
     for i in order[:budget - sum(counts)]:
         counts[i] += 1

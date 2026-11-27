@@ -3,7 +3,7 @@ from math import fsum, sqrt
 from random import Random
 from time import perf_counter
 
-from shotweave import allocate, adaptive_allocation
+from shotweave.experiment import run_experiment
 
 BUDGET = 10_000
 PILOT = 64
@@ -25,19 +25,14 @@ def benchmark(strategy, probabilities=PROBABILITIES):
     start = perf_counter()
     for seed in range(TRIALS):
         rng = Random(seed)
-        spent = 0
-        if strategy == "adaptive":
-            pilot = submit(rng, [PILOT] * len(COEFFICIENTS), probabilities)
-            submissions += 1
-            spent = PILOT * len(pilot)
-            counts = adaptive_allocation(BUDGET, COEFFICIENTS, pilot, PILOT)
-        else:
-            weights = [1] * len(COEFFICIENTS) if strategy == "uniform" else list(map(abs, COEFFICIENTS))
-            counts = allocate(BUDGET, weights)
-        outcomes = submit(rng, counts, probabilities)
-        submissions += 1
-        assert spent + sum(counts) == BUDGET
-        estimate = fsum(c * k / n for c, k, n in zip(COEFFICIENTS, outcomes, counts))
+        result = run_experiment(
+            BUDGET, COEFFICIENTS, lambda counts: submit(rng, counts, probabilities),
+            strategy=strategy, pilot_size=PILOT,
+        )
+        submissions += result.batches
+        counts = result.final_shots
+        assert result.total_shots == BUDGET
+        estimate = result.value
         conditional_variances.append(fsum(
             c*c*p*(1-p)/n for c, p, n in zip(COEFFICIENTS, probabilities, counts)
         ))
