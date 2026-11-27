@@ -69,3 +69,44 @@ With equal circuit variances, coefficient weighting gives the lowest reference e
 ## Status
 
 Version 0.1.0, licensed under Apache 2.0. The benchmarks cover three synthetic scenarios. No hardware or PyPI release has been validated.
+
+## Qiskit V2 sampler
+
+On Python 3.12 install with `python -m pip install '.[qiskit]'` and run
+`python qiskit_example.py`. Pass bound circuits with final measurements into a
+one-bit classical register (default `meas`) to `SamplerAdapter(sampler, circuits)`.
+The adapter sends a single list of (circuit, bindings, shots) tuples per call.
+Its jobs list records the sampler job IDs and requested circuit shots. The
+example uses StatevectorSampler locally and a seeded NumPy generator shared
+across calls. Provider-side scheduling and hardware execution are outside this example.
+
+## Pilot policy and confidence intervals
+
+Pass `pilot_size="auto"` to run_experiment for a budget-aware heuristic.
+Given b = floor(budget / circuits), the pilot per circuit is
+max(1, min(floor(sqrt(b)), floor(b / 10))). Adaptive mode needs at least two
+shots per circuit. The fixed default of 64 preserves existing calls.
+
+Use `confidence_interval(result, coefficients, level=0.95)` from
+shotweave.experiment with the original coefficients. The interval uses the
+two-sided Hoeffding bound with radius sqrt(log(2 / alpha) sum(c_i²/n_i) / 2),
+clipped to the attainable range. The final outcomes are independent
+conditional on the pilot. This gives at least the requested coverage under
+the independent, stationary Bernoulli model, including boundary outcomes.
+Intervals can be conservative. The normal standard error remains available.
+
+## Extended benchmark
+
+Run `python3.12 benchmark_grid.py > results.csv` to reproduce
+[the reference table](benchmark_grid.csv). It includes 300 seeded trials per
+feasible cell, two budgets, three circuit counts, two probability profiles and
+four policies. Reference errors average the conditional variance over pilots.
+Coverage is the observed fraction of intervals containing the exact target.
+Time columns model 10 microseconds per shot plus either zero or one second per
+job. The original benchmark separately measures local wall-clock time.
+
+With 10,000 shots across 100 circuits in the rare-outcome scenario, automatic
+allocation leaves 9,000 final shots and gives reference RMSE 0.0045562.
+A 64-shot pilot leaves 3,600 and gives 0.0063765. Uniform allocation gives
+0.0051802 with one job. For equal variances at the same budget and size,
+coefficient weighting gives 0.0100003 with one job, versus 0.0105714 for auto.

@@ -1,6 +1,6 @@
 """Execution of independent binary measurement batches."""
 from dataclasses import dataclass
-from math import fsum, isfinite, sqrt
+from math import fsum, isfinite, isqrt, log, sqrt
 from typing import Optional, Tuple
 
 from . import adaptive_allocation, allocate
@@ -52,6 +52,26 @@ def summarize(coefficients, shots, successes):
     return Estimate(value, standard_error, shots, successes)
 
 
+def confidence_interval(result, coefficients, level=0.95):
+    """Two-sided Hoeffding interval conditional on the independent final allocation."""
+    coefficients = tuple(coefficients)
+    if not 0 < level < 1 or len(coefficients) != len(result.final_shots):
+        raise ValueError("Invalid confidence level or coefficient count")
+    estimate = summarize(coefficients, result.final_shots, result.successes)
+    scale = fsum(c*c/n for c, n in zip(coefficients, result.final_shots))
+    radius = sqrt(0.5 * log(2 / (1 - level)) * scale)
+    return (max(fsum(min(0, c) for c in coefficients), estimate.value - radius),
+            min(fsum(max(0, c) for c in coefficients), estimate.value + radius))
+
+
+def automatic_pilot(budget, circuits):
+    """Square-root pilot per circuit, capped at 10% except for the one-shot floor."""
+    if type(circuits) is not int or circuits < 1 or type(budget) is not int or budget < 2 * circuits:
+        raise ValueError("Adaptive sampling needs two shots per circuit")
+    per_circuit = budget // circuits
+    return max(1, min(isqrt(per_circuit), per_circuit // 10))
+
+
 def run_experiment(budget, coefficients, submit, strategy="adaptive", pilot_size=64):
     """Call submit(shots) in circuit order and return the estimate and both batches."""
     coefficients = tuple(coefficients)
@@ -63,6 +83,8 @@ def run_experiment(budget, coefficients, submit, strategy="adaptive", pilot_size
         raise ValueError("Budget must cover every circuit")
     pilot = pilot_counts = ()
     if strategy == "adaptive":
+        if pilot_size == "auto":
+            pilot_size = automatic_pilot(budget, len(coefficients))
         if type(pilot_size) is not int or not 1 <= pilot_size <= budget // len(coefficients) - 1:
             raise ValueError("Budget must cover the pilot and at least one final shot per circuit")
         pilot = (pilot_size,) * len(coefficients)
