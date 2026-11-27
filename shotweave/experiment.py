@@ -77,7 +77,7 @@ def run_experiment(budget: int, coefficients: Iterable[float],
                    pilot_size: Union[int, Literal["auto"]] = 64) -> Estimate:
     """Call submit(shots) in circuit order and return the estimate and both batches."""
     coefficients = tuple(coefficients)
-    if strategy not in ("uniform", "weighted", "adaptive"):
+    if strategy not in ("uniform", "weighted", "adaptive", "adaptive-optimal"):
         raise ValueError("Unknown allocation strategy")
     if not coefficients or not all(map(isfinite, coefficients)) or not any(coefficients):
         raise ValueError("Provide finite coefficients with a nonzero term")
@@ -85,7 +85,7 @@ def run_experiment(budget: int, coefficients: Iterable[float],
         raise ValueError("Budget must cover every circuit")
     pilot: tuple[int, ...] = ()
     pilot_counts: tuple[int, ...] = ()
-    if strategy == "adaptive":
+    if strategy in ("adaptive", "adaptive-optimal"):
         if pilot_size == "auto":
             pilot_size = automatic_pilot(budget, len(coefficients))
         if type(pilot_size) is not int or not 1 <= pilot_size <= budget // len(coefficients) - 1:
@@ -93,7 +93,7 @@ def run_experiment(budget: int, coefficients: Iterable[float],
         pilot = (pilot_size,) * len(coefficients)
         pilot_counts = tuple(submit(pilot))
         _check_counts(pilot, pilot_counts)
-        final = adaptive_allocation(budget, coefficients, pilot_counts, pilot_size)
+        final = adaptive_allocation(budget, coefficients, pilot_counts, pilot_size, optimal=strategy == "adaptive-optimal")
     else:
         weights = [1] * len(coefficients) if strategy == "uniform" else map(abs, coefficients)
         final = allocate(budget, weights)

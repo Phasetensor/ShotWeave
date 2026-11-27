@@ -23,7 +23,7 @@ def allocate(budget: int, weights: Iterable[float]) -> list[int]:
 
 
 def adaptive_allocation(budget: int, coefficients: Iterable[float], successes: Iterable[int],
-                        pilot_size: int) -> list[int]:
+                        pilot_size: int, *, optimal: bool = False) -> list[int]:
     """Allocate the remaining shots after an equal-size pilot per circuit."""
     coefficients, successes = tuple(coefficients), tuple(successes)
     if type(pilot_size) is not int or pilot_size < 1 or len(successes) != len(coefficients):
@@ -32,7 +32,8 @@ def adaptive_allocation(budget: int, coefficients: Iterable[float], successes: I
         raise ValueError("Invalid pilot success count")
     probabilities = [(k + 0.5) / (pilot_size + 1) for k in successes]
     weights = [abs(c) * sqrt(p * (1 - p)) for c, p in zip(coefficients, probabilities)]
-    return allocate(budget - pilot_size * len(weights), weights)
+    allocator = optimal_allocation if optimal else allocate
+    return allocator(budget - pilot_size * len(weights), weights)
 
 
 def optimal_allocation(budget: int, weights: Iterable[float]) -> list[int]:
