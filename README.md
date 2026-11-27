@@ -16,7 +16,7 @@ remaining = adaptive_allocation(10_000, [1, -2, 4, 1], [32, 16, 63, 45], 64)
 
 ## Installation and measurement data
 
-Install from PyPI with `python -m pip install shotweave==0.1.0`, or from the repository root with `python -m pip install .`. No runtime dependencies are required.
+Install from PyPI with `python -m pip install shotweave==0.2.0`, or from the repository root with `python -m pip install .`. No runtime dependencies are required.
 
 A backend receives a tuple of requested shot counts and returns one integer count of outcome 1 per circuit in the same order. This example uses a seeded local sampler. Replace the callback with your own batch submission function to use other measurement data.
 
@@ -68,7 +68,7 @@ With equal circuit variances, coefficient weighting gives the lowest reference e
 
 ## Status
 
-Version 0.1.0, licensed under Apache 2.0. The benchmarks cover three synthetic scenarios. Version 0.1.0 is available on [PyPI](https://pypi.org/project/shotweave/0.1.0/).
+ShotWeave 0.2.0 is licensed under Apache 2.0. [PyPI distribution](https://pypi.org/project/shotweave/0.2.0/).
 
 ## Qiskit V2 sampler
 
@@ -135,3 +135,24 @@ wall time including queueing. Keep the report when diagnosing a failed run.
 ## Research methods and development history
 
 [Scientific methods](docs/methods.md) · [Changes since 0.1.0](CHANGELOG.md) · [Software citation](CITATION.cff)
+
+## Advanced measurement design
+
+Import strategies from the public package. A fixed-budget run supports uniform, weighted, optimal, adaptive, adaptive-optimal, Bayesian, robust and noise-aware designs. The strategy strings use lowercase. Use the sequential entry point when each batch can determine whether sampling stops.
+
+```python
+from shotweave import Readout, run_experiment
+
+def measure(shots):
+    # Deterministic example callback returning one count per circuit.
+    return [n // 2 for n in shots]
+
+result = run_experiment(10_000, [1, -2], measure, "noise-aware", "auto",
+                        readout=[Readout(.02, .03), Readout(.12, .07)])
+```
+
+A circuit with readout slope s amplifies variance by 1/s² after correction. The noise-aware strategy allocates the fresh measurement batch using pilot estimates of the observed variances and these per-circuit amplification factors. Calibration rates are treated as known and stationary. Supply identical calibrations to the other strategies to compare allocations for the same corrected estimator.
+
+The advanced benchmark compares eight strategies at 10,000 shots per trial, including pilot shots. Each of two scenarios uses 150 matched blocks. The sequential benchmark checks every inspected interval along 500 adaptive paths per scenario, including the stopping look. See the [benchmark results](benchmark_advanced.csv), [sequential coverage](benchmark_sequential.csv), [mathematical assumptions](docs/advanced.md) and [15-module traceability matrix](docs/traceability.md).
+
+Release CI measured 469 of 474 statements (98.95%) and 176 of 182 branches (96.70%) with the Qiskit extra installed.

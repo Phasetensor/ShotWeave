@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-27)
+
+- Added covariance, grouping, cost-constrained, Bayesian, robust and noise-aware optimization.
+- Exposed fixed-budget and sequential strategies through the public package.
+- Added 10,000-shot matched simulations and simultaneous coverage validation.
+- Added a 15-module traceability matrix and separate statement and branch coverage gates.
 
 - IBM hardware example with resumable submissions and equal-shot parameter sweeps.
 - Integer variance minimization, exhaustive optimality checks and API type annotations.
